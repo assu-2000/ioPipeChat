@@ -1,0 +1,99 @@
+// server/main.go
+package main
+
+import (
+	"io"
+	"log"
+	"net"
+	"sync"
+
+	"google.golang.org/grpc"
+
+	pb "github.com/assu-2000/ioPipeChat/chatpb"
+)
+
+type connection struct {
+	stream pb.ChatService_ChatStreamServer
+	err    chan error
+}
+
+type chatServer struct {
+	pb.UnimplementedChatServiceServer
+	connections map[pb.ChatService_ChatStreamServer]*connection
+	mu          sync.RWMutex // protège l'accès à la map des connexions
+}
+
+func newChatServer() *chatServer {
+	return &chatServer{
+		connections: make(map[pb.ChatService_ChatStreamServer]*connection),
+	}
+}
+
+func (s *chatServer) ChatStream(stream pb.ChatService_ChatStreamServer) error {
+	log.Println("Nouveau client connecté.")
+
+	// create une nouvelle connexion pour ce client
+	conn := &connection{
+		stream: stream,
+		err:    make(chan error),
+	}
+
+	s.mu.Lock()
+	s.connections[stream] = conn
+	s.mu.Unlock()
+
+	// for pour recevoir les messages du client
+	for {
+		msg, err := stream.Recv()
+		if err == io.EOF {
+			log.Println("Client déconnecté (EOF).")
+			break
+		}
+		if err != nil {
+			log.Printf("Erreur de réception du client: %v", err)
+			break
+		}
+
+		// on broadcast le message à tous les autres clients
+		s.broadcast(msg, stream)
+	}
+
+	// Nettoyage à la déconnexion
+	s.mu.Lock()
+	delete(s.connections, stream)
+	s.mu.Unlock()
+	log.Println("Connexion client nettoyée.")
+
+	return <-conn.err // attend une potentielle erreur de broadcast
+}
+
+// broadcast envoie un message à tous les clients sauf à l'expéditeur.
+func (s *chatServer) broadcast(msg *pb.Message, senderStream pb.ChatService_ChatStreamServer) {
+	s.mu.RLock() // lock en lecture, plusieurs goroutines peuvent lire en même temps.
+	defer s.mu.RUnlock()
+
+	for stream, conn := range s.connections {
+		if stream != senderStream {
+			if err := stream.Send(msg); err != nil {
+				log.Printf("Erreur d'envoi vers un client: %v", err)
+				conn.err <- err // signale l'erreur pour terminer la goroutine de ce client
+			}
+		}
+	}
+}
+
+func main() {
+	lis, err := net.Listen("tcp", ":50051")
+	if err != nil {
+		log.Fatalf("Échec de l'écoute: %v", err)
+	}
+	log.Println("Serveur en écoute sur le port 50051")
+
+	grpcServer := grpc.NewServer()
+	chatSrv := newChatServer()
+	pb.RegisterChatServiceServer(grpcServer, chatSrv)
+
+	if err := grpcServer.Serve(lis); err != nil {
+		log.Fatalf("Échec du serveur: %v", err)
+	}
+}
