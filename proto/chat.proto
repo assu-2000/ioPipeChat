@@ -4,10 +4,19 @@ package chat;
 
 option go_package = "./chatpb";
 
-service ChatService {
-  rpc ChatStream(stream Message) returns (stream Message);
+enum MessageType {
+  // Le user est en train de taper. Le contenu est la ligne actuelle.
+  TYPING_UPDATE = 0;
+  // Le user a appuyé sur Entrée. Le message est final.
+  FINAL_MESSAGE = 1;
 }
 
 message Message {
-  bytes content = 1;
+  string username = 1;
+  bytes content = 2;
+  MessageType type = 3;
+}
+
+service ChatService {
+  rpc ChatStream(stream Message) returns (stream Message);
 }

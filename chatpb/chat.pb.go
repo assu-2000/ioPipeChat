@@ -21,9 +21,60 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Le type de message envoyé.
+type MessageType int32
+
+const (
+	// L'utilisateur est en train de taper. Le contenu est la ligne actuelle.
+	MessageType_TYPING_UPDATE MessageType = 0
+	// L'utilisateur a appuyé sur Entrée. Le message est final.
+	MessageType_FINAL_MESSAGE MessageType = 1
+)
+
+// Enum value maps for MessageType.
+var (
+	MessageType_name = map[int32]string{
+		0: "TYPING_UPDATE",
+		1: "FINAL_MESSAGE",
+	}
+	MessageType_value = map[string]int32{
+		"TYPING_UPDATE": 0,
+		"FINAL_MESSAGE": 1,
+	}
+)
+
+func (x MessageType) Enum() *MessageType {
+	p := new(MessageType)
+	*p = x
+	return p
+}
+
+func (x MessageType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (MessageType) Descriptor() protoreflect.EnumDescriptor {
+	return file_proto_chat_proto_enumTypes[0].Descriptor()
+}
+
+func (MessageType) Type() protoreflect.EnumType {
+	return &file_proto_chat_proto_enumTypes[0]
+}
+
+func (x MessageType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use MessageType.Descriptor instead.
+func (MessageType) EnumDescriptor() ([]byte, []int) {
+	return file_proto_chat_proto_rawDescGZIP(), []int{0}
+}
+
 type Message struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Content       []byte                 `protobuf:"bytes,1,opt,name=content,proto3" json:"content,omitempty"`
+	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`                // Qui envoie le message.
+	Content       []byte                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`                  // Le contenu.
+	Type          MessageType            `protobuf:"varint,3,opt,name=type,proto3,enum=chat.MessageType" json:"type,omitempty"` // La nature du message.
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -58,6 +109,13 @@ func (*Message) Descriptor() ([]byte, []int) {
 	return file_proto_chat_proto_rawDescGZIP(), []int{0}
 }
 
+func (x *Message) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
 func (x *Message) GetContent() []byte {
 	if x != nil {
 		return x.Content
@@ -65,13 +123,25 @@ func (x *Message) GetContent() []byte {
 	return nil
 }
 
+func (x *Message) GetType() MessageType {
+	if x != nil {
+		return x.Type
+	}
+	return MessageType_TYPING_UPDATE
+}
+
 var File_proto_chat_proto protoreflect.FileDescriptor
 
 const file_proto_chat_proto_rawDesc = "" +
 	"\n" +
-	"\x10proto/chat.proto\x12\x04chat\"#\n" +
-	"\aMessage\x12\x18\n" +
-	"\acontent\x18\x01 \x01(\fR\acontent2=\n" +
+	"\x10proto/chat.proto\x12\x04chat\"f\n" +
+	"\aMessage\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\x12\x18\n" +
+	"\acontent\x18\x02 \x01(\fR\acontent\x12%\n" +
+	"\x04type\x18\x03 \x01(\x0e2\x11.chat.MessageTypeR\x04type*3\n" +
+	"\vMessageType\x12\x11\n" +
+	"\rTYPING_UPDATE\x10\x00\x12\x11\n" +
+	"\rFINAL_MESSAGE\x10\x012=\n" +
 	"\vChatService\x12.\n" +
 	"\n" +
 	"ChatStream\x12\r.chat.Message\x1a\r.chat.Message(\x010\x01B\n" +
@@ -89,18 +159,21 @@ func file_proto_chat_proto_rawDescGZIP() []byte {
 	return file_proto_chat_proto_rawDescData
 }
 
+var file_proto_chat_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_proto_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_proto_chat_proto_goTypes = []any{
-	(*Message)(nil), // 0: chat.Message
+	(MessageType)(0), // 0: chat.MessageType
+	(*Message)(nil),  // 1: chat.Message
 }
 var file_proto_chat_proto_depIdxs = []int32{
-	0, // 0: chat.ChatService.ChatStream:input_type -> chat.Message
-	0, // 1: chat.ChatService.ChatStream:output_type -> chat.Message
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	0, // 0: chat.Message.type:type_name -> chat.MessageType
+	1, // 1: chat.ChatService.ChatStream:input_type -> chat.Message
+	1, // 2: chat.ChatService.ChatStream:output_type -> chat.Message
+	2, // [2:3] is the sub-list for method output_type
+	1, // [1:2] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_proto_chat_proto_init() }
@@ -113,13 +186,14 @@ func file_proto_chat_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_chat_proto_rawDesc), len(file_proto_chat_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_proto_chat_proto_goTypes,
 		DependencyIndexes: file_proto_chat_proto_depIdxs,
+		EnumInfos:         file_proto_chat_proto_enumTypes,
 		MessageInfos:      file_proto_chat_proto_msgTypes,
 	}.Build()
 	File_proto_chat_proto = out.File

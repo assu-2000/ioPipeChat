@@ -1,4 +1,3 @@
-// server/main.go
 package main
 
 import (
@@ -67,16 +66,19 @@ func (s *chatServer) ChatStream(stream pb.ChatService_ChatStreamServer) error {
 	return <-conn.err // attend une potentielle erreur de broadcast
 }
 
-// broadcast envoie un message à tous les clients sauf à l'expéditeur.
 func (s *chatServer) broadcast(msg *pb.Message, senderStream pb.ChatService_ChatStreamServer) {
-	s.mu.RLock() // lock en lecture, plusieurs goroutines peuvent lire en même temps.
+	s.mu.RLock()
 	defer s.mu.RUnlock()
 
+	username := msg.GetUsername()
+	log.Printf("Relai du message de [%s]", username)
+
 	for stream, conn := range s.connections {
+		// la condition clé : ne pas renvoyer à l'expéditeur
 		if stream != senderStream {
 			if err := stream.Send(msg); err != nil {
 				log.Printf("Erreur d'envoi vers un client: %v", err)
-				conn.err <- err // signale l'erreur pour terminer la goroutine de ce client
+				conn.err <- err
 			}
 		}
 	}
